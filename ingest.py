@@ -9,11 +9,11 @@ import re
 import time
 
 # --- 1. Load Environment Variables ---
-# Make sure you have a .env file with your API keys
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 qdrant_url = os.getenv("QDRANT_URL")
 qdrant_api_key = os.getenv("QDRANT_API_KEY")
+file_path = os.getenv("FILE_PATH")
 
 def preprocess_text(text):
     """
@@ -33,10 +33,6 @@ def main():
     """
     Main function to handle the data ingestion pipeline.
     """
-    # --- 2. Load and Process the PDF Document ---
-    # NOTE: You will need to install the 'pypdf' library for this to work.
-    # Run this command in your terminal: pip install pypdf
-    file_path = r"C:\Users\Ramzan.Agriya\Documents\Data_Books\Introduction.to.Algorithms.4th.Leiserson.Stein.Rivest.Cormen.MIT.Press.9780262046305.EBooksWorld.ir.pdf"
 
     try:
         loader = PyPDFLoader(file_path)
