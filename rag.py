@@ -6,7 +6,6 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 import os
-import qdrant_client
 
 
 load_dotenv()
@@ -27,7 +26,7 @@ def main():
     Main function to set up the RAG chain and answer questions.
     """
     try:
-     
+    
         # Initialize the Qdrant client
         client = qdrant_client.QdrantClient(
             url=qdrant_url, 
@@ -77,6 +76,8 @@ def main():
 
         # Generate the final answer using the full RAG chain
         answer = rag_chain.invoke(query)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
