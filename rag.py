@@ -1,7 +1,7 @@
-from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_qdrant import Qdrant
+from qdrant_client import QdrantClient
+from langchain_qdrant import QdrantVectorStore
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
@@ -9,17 +9,12 @@ import os
 
 
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
 qdrant_url = os.getenv("QDRANT_URL")
-qdrant_api_key = os.getenv("QDRANT_API_KEY")
+# qdrant_api_key = os.getenv("QDRANT_API_KEY")
+# api_key = os.getenv("GEMINI_API_KEY")
 
+model = ChatOllama(model="gemma3:1b", temperature=0.0)
 
-model = init_chat_model(
-    "gemini-2.5-flash-lite",
-    model_provider="google_genai",
-    api_key=api_key,
-    temperature=0.0
-)
 
 def main():
     """
@@ -28,21 +23,22 @@ def main():
     try:
     
         # Initialize the Qdrant client
-        client = qdrant_client.QdrantClient(
-            url=qdrant_url, 
-            api_key=qdrant_api_key
+        client = QdrantClient(
+            url=qdrant_url,
+            api_key=None
         )
         
         # Initialize the embeddings model
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
-        
-        collection_name = ""
+        # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        embedding = OllamaEmbeddings(model="embeddinggemma")
+        collection_name = "1984_by_george_orwell"
         
         # Create a Qdrant instance for an existing collection
-        qdrant = Qdrant(
+        qdrant = QdrantVectorStore(
             client=client, 
             collection_name=collection_name, 
-            embeddings=embeddings
+            embedding = embedding,
+            vector_name="1984-dense-vectors"
         )
 
 
@@ -68,7 +64,7 @@ def main():
 
 
         # Create the query
-        query = ""
+        query = "Who are the main characters?"
 
         # Retrieve relevant documents to show the sources
         retrieved_docs = retriever.invoke(query)
@@ -76,8 +72,10 @@ def main():
 
         # Generate the final answer using the full RAG chain
         answer = rag_chain.invoke(query)
+        print("Answer:", answer)
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 
 if __name__ == "__main__":

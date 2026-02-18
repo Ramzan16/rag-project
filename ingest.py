@@ -1,19 +1,21 @@
 from langchain.chat_models import init_chat_model
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_ollama import OllamaEmbeddings
+from qdrant_client import QdrantClient
+from langchain_qdrant import QdrantVectorStore
 from dotenv import load_dotenv
 import os
 import re
 import time
 
+
 # --- 1. Load Environment Variables ---
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
 qdrant_url = os.getenv("QDRANT_URL")
-qdrant_api_key = os.getenv("QDRANT_API_KEY")
 file_path = os.getenv("FILE_PATH")
+# qdrant_api_key = os.getenv("QDRANT_API_KEY")
+
 
 def preprocess_text(text):
     """
@@ -63,22 +65,26 @@ def main():
 
         # --- 5. Create Embeddings & Store in Qdrant Cluster ---
         print("\n--- Creating embeddings and storing in Qdrant ---")
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
-        
-        collection_name = "my_algorithms_book"
+        # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+        embeddings = OllamaEmbeddings(model="embeddinggemma")
+
+        collection_name = "1984_by_george_orwell"
         batch_size = 16
 
         # Use Qdrant.from_documents to create the collection and upload the first batch.
         print("Initializing Qdrant collection and uploading the first batch...")
-        qdrant = Qdrant.from_documents(
-            documents=chunks[:batch_size],
-            embedding=embeddings,
-            url=qdrant_url,
-            api_key=qdrant_api_key,
+        client = QdrantClient(url=qdrant_url)
+
+        qdrant = QdrantVectorStore(
+            client=client,
             collection_name=collection_name,
+            embedding=embeddings,
+            vector_name="1984-dense-vectors"
         )
+
+        qdrant.add_documents(chunks[:batch_size])
         print("Initial batch uploaded successfully.")
-        
+
         print(f"Uploading remaining chunks to Qdrant in batches of {batch_size}...")
 
         # Loop through the rest of the chunks and add them in batches with retry logic
@@ -96,7 +102,7 @@ def main():
                     wait_time = 2 ** retries
                     print(f"Batch upload failed: {e}. Retrying in {wait_time}s... (Attempt {retries}/{max_retries})")
                     time.sleep(wait_time)
-            
+
             if retries == max_retries:
                 print(f"Failed to upload batch {i//batch_size + 1} after {max_retries} attempts. Aborting.")
                 break
