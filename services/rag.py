@@ -21,18 +21,18 @@ def main():
     Main function to set up the RAG chain and answer questions.
     """
     try:
-    
+
         # Initialize the Qdrant client
         client = QdrantClient(
             url=qdrant_url,
             api_key=None
         )
-        
+
         # Initialize the embeddings model
         # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
         embedding = OllamaEmbeddings(model="embeddinggemma")
         collection_name = "1984_by_george_orwell"
-        
+
         # Create a Qdrant instance for an existing collection
         qdrant = QdrantVectorStore(
             client=client, 

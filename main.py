@@ -1,6 +1,6 @@
-def main():
-    print("Hello from rag-project!")
+from llm_provider.factory import ProviderFactory
+from config.settings import Config, config
 
-
-if __name__ == "__main__":
-    main()
+model = ProviderFactory.get_provider('ollama', config)
+print(model.get_chat_model())
+print(model.get_embedding_model())
