@@ -40,10 +40,14 @@ class Config(BaseSettings):
     # Vector Database Configurations
     qdrant_url: str | None = os.getenv("QDRANT_URL")
     qdrant_api_key: str | None = os.getenv("QDRANT_API_KEY")
+    collection_name: str = "arxiv_collection"
+    dense_vector_name: str = "dense_vectors"
+    chunk_size: int = Field(default=1000, ge=1)
+    chunk_overlap: int = Field(default=200, ge=0)
+    batch_size: int = Field(default=32, ge=1)
 
     # file paths
-    file_dir: str = "data/documents"
-    file_path: str | None = os.getenv("FILE_PATH")
+    file_dir: str
 
     # This reserved dictionary tells Pydantic to look for a .env file
     model_config = SettingsConfigDict(

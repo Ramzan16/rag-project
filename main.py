@@ -1,4 +1,4 @@
-from llm_provider.factory import ProviderFactory
+from llm_provider import ProviderFactory
 from config.settings import Config, config
 
 model = ProviderFactory.get_provider('ollama', config)
