@@ -1,51 +1,25 @@
 from langchain_core.prompts import ChatPromptTemplate
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
-from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from dotenv import load_dotenv
-import os
+from llm_provider import ProviderFactory
+from config.settings import Config, provider_type
+from config.settings import config
 
 
-load_dotenv()
-qdrant_url = os.getenv("QDRANT_URL")
-# qdrant_api_key = os.getenv("QDRANT_API_KEY")
-# api_key = os.getenv("GEMINI_API_KEY")
-
-model = ChatOllama(model="gemma3:1b", temperature=0.0)
-
-
-def main():
+class RagService:
     """
-    Main function to set up the RAG chain and answer questions.
+    Service class to handle the RAG pipeline.
     """
-    try:
+    def __init__(self, config: Config = config, provider: provider_type = provider_type.OLLAMA):
+        self.config = config
+        self.provider = ProviderFactory.get_provider(provider, config)
 
-        # Initialize the Qdrant client
-        client = QdrantClient(
-            url=qdrant_url,
-            api_key=None
-        )
-
-        # Initialize the embeddings model
-        # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
-        embedding = OllamaEmbeddings(model="embeddinggemma")
-        collection_name = "1984_by_george_orwell"
-
-        # Create a Qdrant instance for an existing collection
-        qdrant = QdrantVectorStore(
-            client=client, 
-            collection_name=collection_name, 
-            embedding = embedding,
-            vector_name="1984-dense-vectors"
-        )
-
-
-        # Initialize the retriever from your Qdrant vector store
-        retriever = qdrant.as_retriever()
-
-        # Define the prompt template
+    def setup_rag_chain(self, retriever):
+        """
+        Sets up the RAG chain using LCEL.
+        """
         template = """
         Answer the question based only on the following context:
         {context}
@@ -54,29 +28,36 @@ def main():
         """
         prompt = ChatPromptTemplate.from_template(template)
 
-        # Build the RAG chain using LCEL
         rag_chain = (
             {"context": retriever, "question": RunnablePassthrough()}
             | prompt
-            | model
+            | self.provider.get_chat_model()
             | StrOutputParser()
         )
+        return rag_chain
 
+    def init_qdrant_instance(self):
+        """
+        Initializes the Qdrant client using the configurations.
+        """
+        client = QdrantClient(
+            url=self.config.vectordb.qdrant_url,
+            api_key=self.config.vectordb.qdrant_api_key
+        )
+        qdrant = QdrantVectorStore(
+            client=client, 
+            collection_name=self.config.vectordb.collection_name, 
+            embedding=self.provider.get_embedding_model(),
+            vector_name=self.config.vectordb.dense_vector_name
+        )
+        return qdrant
 
-        # Create the query
-        query = "Who are the main characters?"
-
-        # Retrieve relevant documents to show the sources
-        retrieved_docs = retriever.invoke(query)
-
-
-        # Generate the final answer using the full RAG chain
+    def query(self, query):
+        """
+        Executes a query against the RAG chain and returns the answer.
+        """
+        qdrant = self.init_qdrant_instance()
+        retriever = qdrant.as_retriever()
+        rag_chain = self.setup_rag_chain(retriever)
         answer = rag_chain.invoke(query)
-        print("Answer:", answer)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-
-
-if __name__ == "__main__":
-    main()
+        return answer
