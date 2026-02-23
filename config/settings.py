@@ -24,6 +24,13 @@ class VectorDBConfig(BaseModel):
     chunk_overlap: int = Field(default=200, ge=0)
     batch_size: int = Field(default=32, ge=1)
 
+class ArxivConfig(BaseModel):
+    query: str = ""
+    max_results: int = Field(default=200, ge=1)
+    sort_by: str = "Relevance"
+    sort_order: str = "Descending"
+
+
 class LogLevel(str, Enum):
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -55,6 +62,11 @@ class Config(BaseSettings):
         chunk_size = 1000,
         chunk_overlap = 200,
         batch_size = 32
+    ))
+
+    #Arxiv Papers Downloading Configurations
+    arxiv: ArxivConfig = Field(default_factory=lambda: ArxivConfig(
+        query="ti:stable diffusion AND abs:video generation",
     ))
 
     # file paths
