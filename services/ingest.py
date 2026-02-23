@@ -8,6 +8,7 @@ from langchain_qdrant import QdrantVectorStore
 from pathlib import Path
 import re
 import time
+import hashlib
 
 
 class IngestService:
@@ -16,7 +17,7 @@ class IngestService:
     """
     def __init__(self, config: Config = config, provider: provider_type = provider_type.OLLAMA):
         self.config = config
-        self.model = ProviderFactory.get_provider(provider, config)
+        self.provider = ProviderFactory.get_provider(provider, config)
 
     @staticmethod
     def preprocess_text(text: str):
@@ -51,10 +52,11 @@ class IngestService:
         for doc in documents:
             doc.page_content = self.preprocess_text(doc.page_content)
             doc.metadata = {
+                "doc_id": hashlib.sha1(doc.metadata.get("source", "").encode("utf-8")).hexdigest(),
                 "creationdate": doc.metadata.get("creationdate", ""),
                 "author": doc.metadata.get("author", ""),
                 "moddate": doc.metadata.get("moddate", ""),
-                "title": Path(doc.metadata.get("source", "")).name if doc.metadata.get("source", "") else "",
+                "title": Path(doc.metadata.get("source", "")).name,
                 "source": doc.metadata.get("source", ""),
                 "total_pages": doc.metadata.get("total_pages", 0),
                 "page": doc.metadata.get("page", 0),
@@ -77,20 +79,20 @@ class IngestService:
         """
         Creates embeddings for the chunks and stores them in Qdrant.
         """
-        if self.config.qdrant_api_key:
+        if self.config.vectordb.qdrant_api_key:
             client = QdrantClient(
-                url=self.config.qdrant_url,
-                api_key=self.config.qdrant_api_key
+                url=self.config.vectordb.qdrant_url,
+                api_key=self.config.vectordb.qdrant_api_key
             )
         # For a local Qdrant instance without API key
         else:
-            client = QdrantClient(url=self.config.qdrant_url)
+            client = QdrantClient(url=self.config.vectordb.qdrant_url)
 
         qdrant = QdrantVectorStore(
             client=client,
-            collection_name=self.config.collection_name,
-            embedding=self.model.get_embedding_model(),
-            vector_name=self.config.dense_vector_name
+            collection_name=self.config.vectordb.collection_name,
+            embedding=self.provider.get_embedding_model(),
+            vector_name=self.config.vectordb.dense_vector_name
         )
 
         qdrant.add_documents(chunks[:self.config.batch_size])
@@ -103,7 +105,7 @@ class IngestService:
             while retries < max_retries:
                 try:
                     qdrant.add_documents(batch)
-                    print(f"Uploaded batch {i//self.config.batch_size + 1}/{(len(chunks) + self.config.batch_size - 1)//self.config.batch_size}")
+                    print(f"Uploaded batch {i//self.config.vectordb.batch_size + 1}/{(len(chunks) + self.config.vectordb.batch_size - 1)//self.config.vectordb.batch_size}")
                     break
                 except Exception as e:
                     retries += 1
@@ -112,7 +114,7 @@ class IngestService:
                     time.sleep(wait_time)
 
             if retries == max_retries:
-                print(f"Failed to upload batch {i//self.config.batch_size + 1} after {max_retries} attempts. Aborting.")
+                print(f"Failed to upload batch {i//self.config.vectordb.batch_size + 1} after {max_retries} attempts. Aborting.")
                 break
 
     def run_pipeline(self):
