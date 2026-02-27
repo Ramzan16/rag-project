@@ -69,8 +69,8 @@ class IngestService:
         Chunks the documents using RecursiveCharacterTextSplitter.
         """
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.config.chunk_size, 
-            chunk_overlap=self.config.chunk_overlap
+            chunk_size=self.config.vectordb.chunk_size, 
+            chunk_overlap=self.config.vectordb.chunk_overlap
         )
         chunks = text_splitter.split_documents(documents)
         return chunks
@@ -95,11 +95,11 @@ class IngestService:
             vector_name=self.config.vectordb.dense_vector_name
         )
 
-        qdrant.add_documents(chunks[:self.config.batch_size])
+        qdrant.add_documents(chunks[:self.config.vectordb.batch_size])
 
         # Loop through the rest of the chunks and add them in batches with retry logic
-        for i in range(self.config.batch_size, len(chunks), self.config.batch_size):
-            batch = chunks[i:i + self.config.batch_size]
+        for i in range(self.config.vectordb.batch_size, len(chunks), self.config.vectordb.batch_size):
+            batch = chunks[i:i + self.config.vectordb.batch_size]
             max_retries = 5
             retries = 0
             while retries < max_retries:
