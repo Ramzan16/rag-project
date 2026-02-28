@@ -2,9 +2,9 @@ import argparse
 import logging
 from config.settings import config, provider_type
 from config.logging_utils import setup_logging
-from services.arxiv import ArxivService
-from services.ingest import IngestService
-from services.rag import RagService
+from services import ArxivService
+from services import IngestService
+from services import RagService
 
 logger = logging.getLogger(__name__)
 
