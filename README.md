@@ -33,7 +33,7 @@ A CLI-based Retrieval-Augmented Generation (RAG) system designed to fetch, inges
 
 1.  **Clone the repository**:
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/Ramzan16/rag-project.git
     cd rag-project
     ```
 
