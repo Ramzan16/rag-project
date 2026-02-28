@@ -3,6 +3,9 @@ from arxiv import *
 import urllib.request
 from pathlib import Path
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ArxivService:
     def __init__(self, config: Config = config):
@@ -13,13 +16,15 @@ class ArxivService:
         #Map strings from config to enum values
         sort_by =SortCriterion.__members__.get(self.config.arxiv.sort_by)
         sort_order = SortOrder.__members__.get(self.config.arxiv.sort_order)
+        logger.info(f"Searching arXiv with query: '{query}', max_results: {self.config.arxiv.max_results}")
         query = Search(
             query=query,
             max_results=self.config.arxiv.max_results,
             sort_by=sort_by,
             sort_order=sort_order
         )
-        results = self.client.results(query)
+        results = list(self.client.results(query))
+        logger.info(f"Found {len(results)} results on arXiv")
         return results
 
     def download_pdfs(self, results):
@@ -29,13 +34,17 @@ class ArxivService:
             parents=True,
             exist_ok=True)
 
+        download_count = 0
         for result in results:
             title = re.sub(r'[^a-zA-Z0-9\s_]', '', result.title).split('/')[-1]
             filename = f"{title}.pdf"
             filepath = download_path / filename
-            print(f"Downloading {filename}")
+            logger.info(f"Downloading {filename}")
             urllib.request.urlretrieve(result.pdf_url,
             filepath)
+            download_count += 1
+        
+        logger.info(f"Successfully downloaded {download_count} PDFs to {download_path}")
 
     def run_service(self, query):
         results = self.search(query)

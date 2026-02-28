@@ -9,6 +9,9 @@ from pathlib import Path
 import re
 import time
 import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class IngestService:
@@ -41,12 +44,15 @@ class IngestService:
         """
         project_dir = Path(__file__).resolve().parent.parent
         file_dir = project_dir / self.config.file_dir
+        logger.info(f"Loading PDFs from: {file_dir}")
         loader = PyPDFDirectoryLoader(
             path=str(file_dir),
             glob='**/[!.]*.pdf',
             recursive = True,
             )
         documents = loader.load()
+
+        logger.info(f"Successfully loaded {len(documents)} document pages from {file_dir}")
 
         #Updating metadata
         for doc in documents:
@@ -68,17 +74,20 @@ class IngestService:
         """
         Chunks the documents using RecursiveCharacterTextSplitter.
         """
+        logger.info(f"Chunking {len(documents)} document pages...")
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.config.vectordb.chunk_size, 
             chunk_overlap=self.config.vectordb.chunk_overlap
         )
         chunks = text_splitter.split_documents(documents)
+        logger.info(f"Created {len(chunks)} chunks")
         return chunks
 
     def embedd_and_store(self, chunks):
         """
         Creates embeddings for the chunks and stores them in Qdrant.
         """
+        logger.info(f"Embedding and storing {len(chunks)} chunks in collection: '{self.config.vectordb.collection_name}'")
         if self.config.vectordb.qdrant_api_key:
             client = QdrantClient(
                 url=self.config.vectordb.qdrant_url,
@@ -105,16 +114,16 @@ class IngestService:
             while retries < max_retries:
                 try:
                     qdrant.add_documents(batch)
-                    print(f"Uploaded batch {i//self.config.vectordb.batch_size + 1}/{(len(chunks) + self.config.vectordb.batch_size - 1)//self.config.vectordb.batch_size}")
+                    logger.info(f"Uploaded batch {i//self.config.vectordb.batch_size + 1}/{(len(chunks) + self.config.vectordb.batch_size - 1)//self.config.vectordb.batch_size}")
                     break
                 except Exception as e:
                     retries += 1
                     wait_time = 2 ** retries
-                    print(f"Batch upload failed: {e}. Retrying in {wait_time}s... (Attempt {retries}/{max_retries})")
+                    logger.warning(f"Batch upload failed: {e}. Retrying in {wait_time}s... (Attempt {retries}/{max_retries})")
                     time.sleep(wait_time)
 
             if retries == max_retries:
-                print(f"Failed to upload batch {i//self.config.vectordb.batch_size + 1} after {max_retries} attempts. Aborting.")
+                logger.error(f"Failed to upload batch {i//self.config.vectordb.batch_size + 1} after {max_retries} attempts. Aborting.")
                 break
 
     def run_pipeline(self):

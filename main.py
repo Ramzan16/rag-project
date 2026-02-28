@@ -1,10 +1,15 @@
 import argparse
+import logging
 from config.settings import config, provider_type
+from config.logging_utils import setup_logging
 from services.arxiv import ArxivService
 from services.ingest import IngestService
 from services.rag import RagService
 
+logger = logging.getLogger(__name__)
+
 def main():
+    setup_logging(config.log_level)
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider", choices=[p.value for p in provider_type], default="ollama", help="LLM provider to use")
 
@@ -44,18 +49,18 @@ def main():
 
     # Route to the correct service
     if args.command == "fetch":
-        print(f"Fetching {args.max_results} papers for query: '{args.query}'...")
+        logger.info(f"Fetching {args.max_results} papers for query: '{args.query}'...")
         arxiv_svc = ArxivService(config)
         results = arxiv_svc.search(args.query)
         arxiv_svc.download_pdfs(results)
 
     elif args.command == "ingest":
-        print("Starting ingestion pipeline...")
+        logger.info("Starting ingestion pipeline...")
         ingest_svc = IngestService(config=config, provider=provider)
         ingest_svc.run_pipeline()
 
     elif args.command == "rag":
-        print(f"Querying: {args.query}")
+        logger.info(f"Querying: {args.query}")
         rag_svc = RagService(config=config, provider=provider)
         answer = rag_svc.query(args.query)
         print("\nAnswer:\n", answer)

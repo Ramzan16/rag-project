@@ -6,6 +6,10 @@ from langchain_core.output_parsers import StrOutputParser
 from llm_provider import ProviderFactory
 from config.settings import Config, provider_type
 from config.settings import config
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class RagService:
@@ -58,6 +62,34 @@ class RagService:
         """
         qdrant = self.init_qdrant_instance()
         retriever = qdrant.as_retriever()
-        rag_chain = self.setup_rag_chain(retriever)
-        answer = rag_chain.invoke(query)
+        
+        logger.info(f"Retrieving context for query: '{query}'")
+        start_time = time.time()
+        
+        # We invoke retriever separately to log its output count
+        context_docs = retriever.invoke(query)
+        retrieval_time = time.time() - start_time
+        logger.info(f"Retrieved {len(context_docs)} documents in {retrieval_time:.2f}s")
+
+        # Setup chain with the already retrieved context for generation
+        template = """
+        Answer the question based only on the following context:
+        {context}
+
+        Question: {question}
+        """
+        prompt = ChatPromptTemplate.from_template(template)
+        
+        chain = (
+            prompt 
+            | self.provider.get_chat_model() 
+            | StrOutputParser()
+        )
+        
+        logger.info("Generating answer...")
+        gen_start_time = time.time()
+        answer = chain.invoke({"context": context_docs, "question": query})
+        generation_time = time.time() - gen_start_time
+        
+        logger.info(f"Answer generated in {generation_time:.2f}s")
         return answer
