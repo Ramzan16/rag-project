@@ -1,11 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate
-from qdrant_client import QdrantClient
-from langchain_qdrant import QdrantVectorStore
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from qdrant_client import QdrantClient
+from langchain_qdrant import QdrantVectorStore
 from llm_provider import ProviderFactory
-from config.settings import Config, provider_type
-from config.settings import config
+from config.settings import Config, provider_type, config
 import logging
 import time
 
@@ -62,30 +61,17 @@ class RagService:
         """
         qdrant = self.init_qdrant_instance()
         retriever = qdrant.as_retriever()
-        
+
         logger.info(f"Retrieving context for query: '{query}'")
         start_time = time.time()
-        
+
         # We invoke retriever separately to log its output count
         context_docs = retriever.invoke(query)
         retrieval_time = time.time() - start_time
         logger.info(f"Retrieved {len(context_docs)} documents in {retrieval_time:.2f}s")
 
-        # Setup chain with the already retrieved context for generation
-        template = """
-        Answer the question based only on the following context:
-        {context}
+        chain = self.setup_rag_chain(retriever)
 
-        Question: {question}
-        """
-        prompt = ChatPromptTemplate.from_template(template)
-        
-        chain = (
-            prompt 
-            | self.provider.get_chat_model() 
-            | StrOutputParser()
-        )
-        
         logger.info("Generating answer...")
         gen_start_time = time.time()
         answer = chain.invoke({"context": context_docs, "question": query})

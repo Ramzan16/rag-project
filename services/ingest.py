@@ -1,8 +1,7 @@
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from llm_provider import ProviderFactory
-from config.settings import Config, provider_type
-from config.settings import config
+from config.settings import Config, provider_type, config
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
 from pathlib import Path
