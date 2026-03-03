@@ -1,8 +1,14 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 from enum import Enum
 import os
 
+
+# Load environment variables from .env file
+load_dotenv()
+
+# LLM Provider settings
 class provider_type(str, Enum):
     GEMINI = "gemini"
     OLLAMA = "ollama"
@@ -15,6 +21,8 @@ class ProviderConfig(BaseModel):
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     max_tokens: int | None = Field(default=2048, ge=1, le=4096)
 
+
+# Vector Database settings
 class VectorDBConfig(BaseModel):
     qdrant_url: str | None = None
     qdrant_api_key: str | None = None
@@ -24,6 +32,8 @@ class VectorDBConfig(BaseModel):
     chunk_overlap: int = Field(default=200, ge=0)
     batch_size: int = Field(default=32, ge=1)
 
+
+# Arxiv settings
 class ArxivConfig(BaseModel):
     query: str = ""
     max_results: int = Field(default=200, ge=1)
@@ -31,6 +41,15 @@ class ArxivConfig(BaseModel):
     sort_order: str = "Descending"
 
 
+# File Upload settings
+class FileUploadConfig(BaseModel):
+    endpoint: str
+    access_key: str
+    secret_key: str
+    bucket_name: str
+
+
+# Log Level
 class LogLevel(str, Enum):
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -38,6 +57,8 @@ class LogLevel(str, Enum):
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
 
+
+# Main Config
 class Config(BaseSettings):
     # provider: provider_type = provider_type.OLLAMA
     
@@ -68,6 +89,14 @@ class Config(BaseSettings):
     arxiv: ArxivConfig = Field(default_factory=lambda: ArxivConfig(
         query="ti:stable diffusion AND abs:video generation",
     ))
+
+    minio: FileUploadConfig = Field(default_factory=lambda: FileUploadConfig(
+        endpoint=os.getenv("MINIO_ENDPOINT"),
+        access_key=os.getenv("MINIO_ACCESS_KEY"),
+        secret_key=os.getenv("MINIO_SECRET_KEY"),
+        bucket_name=os.getenv("MINIO_BUCKET_NAME")
+    ))
+
 
     # file paths
     file_dir: str
