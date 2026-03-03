@@ -1,51 +1,56 @@
-from config.settings import Config, config
-from arxiv import *
-import urllib.request
-from pathlib import Path
-import re
+import arxiv
+import requests
 import logging
+import re
+from config.settings import Config, config
+from schemas import PaperData
 
 logger = logging.getLogger(__name__)
 
 class ArxivService:
     def __init__(self, config: Config = config):
         self.config = config
-        self.client = Client()
+        self.client = arxiv.Client()
 
     def search(self, query):
-        #Map strings from config to enum values
-        sort_by =SortCriterion.__members__.get(self.config.arxiv.sort_by)
-        sort_order = SortOrder.__members__.get(self.config.arxiv.sort_order)
+        # Map strings from config to enum values
+        sort_by = arxiv.SortCriterion.__members__.get(self.config.arxiv.sort_by)
+        sort_order = arxiv.SortOrder.__members__.get(self.config.arxiv.sort_order)
         logger.info(f"Searching arXiv with query: '{query}', max_results: {self.config.arxiv.max_results}")
-        query = Search(
+        query_obj = arxiv.Search(
             query=query,
             max_results=self.config.arxiv.max_results,
             sort_by=sort_by,
             sort_order=sort_order
         )
-        results = list(self.client.results(query))
+        results = list(self.client.results(query_obj))
         logger.info(f"Found {len(results)} results on arXiv")
         return results
 
-    def download_pdfs(self, results):
-    # Ensure the directory exists
-        download_path = Path(self.config.file_dir)
-        download_path.mkdir(
-            parents=True,
-            exist_ok=True)
-
-        download_count = 0
+    def stream_papers(self, results):
+        """
+        Yields PaperData objects with a live stream from ArXiv.
+        """
         for result in results:
-            title = re.sub(r'[^a-zA-Z0-9\s_]', '', result.title).split('/')[-1]
-            filename = f"{title}.pdf"
-            filepath = download_path / filename
-            logger.info(f"Downloading {filename}")
-            urllib.request.urlretrieve(result.pdf_url,
-            filepath)
-            download_count += 1
-        
-        logger.info(f"Successfully downloaded {download_count} PDFs to {download_path}")
+            # stream=True prevents downloading the body immediately
+            with requests.get(result.pdf_url, stream=True) as response:
+                if response.status_code == 200:
+                    # Content-Length is needed by MinIO for streaming uploads
+                    content_length = int(response.headers.get('Content-Length', 0))
+                    
+                    # Sanitize filename
+                    safe_title = re.sub(r'[^\w\s\.-]', '', result.title).replace(' ', '_')
+                    
+                    yield PaperData(
+                        id=result.entry_id,
+                        title=result.title,
+                        filename=f"{safe_title}.pdf",
+                        authors=[author.name for author in result.authors],
+                        summary=result.summary,
+                        stream=response.raw,  # The raw socket stream
+                        content_length=content_length
+                    )
 
     def run_service(self, query):
         results = self.search(query)
-        self.download_pdfs(results)
+        return self.stream_papers(results)
