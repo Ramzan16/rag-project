@@ -16,4 +16,6 @@ dependencies = [
     "python-dotenv>=0.21.0",
     "qdrant-client>=1.16.2",
     "arxiv>=2.4.0",
+    "streamlit>=1.54.0",
+    "minio>=7.2.20",
 ]

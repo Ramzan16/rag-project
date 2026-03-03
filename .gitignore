@@ -19,7 +19,4 @@ __pycache__/
 # Ignore OS files
 .DS_Store
 
-# Documents for Ingesting
-documents/*
-
 .python-version
