@@ -60,7 +60,6 @@ class LogLevel(str, Enum):
 
 # Main Config
 class Config(BaseSettings):
-    # provider: provider_type = provider_type.OLLAMA
     
     # Provider-specific configurations
     ollama: ProviderConfig = Field(default_factory=lambda: ProviderConfig(
@@ -85,11 +84,12 @@ class Config(BaseSettings):
         batch_size = 32
     ))
 
-    #Arxiv Papers Downloading Configurations
+    # Arxiv Papers Downloading Configurations
     arxiv: ArxivConfig = Field(default_factory=lambda: ArxivConfig(
         query="ti:stable diffusion AND abs:video generation",
     ))
 
+    # MinIO Configurations
     minio: FileUploadConfig = Field(default_factory=lambda: FileUploadConfig(
         endpoint=os.getenv("MINIO_ENDPOINT"),
         access_key=os.getenv("MINIO_ACCESS_KEY"),
@@ -97,9 +97,6 @@ class Config(BaseSettings):
         bucket_name=os.getenv("MINIO_BUCKET_NAME")
     ))
 
-
-    # file paths
-    file_dir: str
 
     # This reserved dictionary tells Pydantic to look for a .env file
     model_config = SettingsConfigDict(

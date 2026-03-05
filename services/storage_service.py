@@ -5,7 +5,7 @@ from config.settings import config, Config
 
 logger = logging.getLogger(__name__)
 
-class FileUploadService:
+class StorageService:
     def __init__(self, config: Config = config):
         self.config = config
         self.client = minio.Minio(
@@ -18,7 +18,7 @@ class FileUploadService:
         self._ensure_bucket_exists()
 
     def _ensure_bucket_exists(self):
-        """Checks if the bucket exists, creating it if it doesn't. (Non-dumb way)"""
+        """Checks if the bucket exists, creating it if it doesn't."""
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 self.client.make_bucket(self.bucket_name)
@@ -44,5 +44,24 @@ class FileUploadService:
         except Exception as e:
             logger.error(f"Failed to upload {paper_data.filename}: {e}")
 
-    def run_service(self, paper_data: PaperData):
-        self.upload_file(paper_data)
+    def list_files(self):
+        try:
+            files = self.client.list_objects(
+                bucket_name=self.bucket_name
+            )
+            return [file.object_name for file in files]
+        except Exception as e:
+            logger.error(f"Failed to list files: {e}")
+            return []
+
+    def load_files(self, files):
+        try:
+            for file in files:
+                file_obj = self.client.get_object(
+                    bucket_name=self.bucket_name,
+                    object_name=file
+                )
+                yield file_obj
+                logger.info(f"Successfully loaded: {file}")
+        except Exception as e:
+            logger.error(f"Failed to load files: {e}")
