@@ -19,4 +19,10 @@ __pycache__/
 # Ignore OS files
 .DS_Store
 
+# Docker volume bind mounts
+qdrant_storage/
+minio_data/
+ollama_storage/
+
+
 .python-version
