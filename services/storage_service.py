@@ -12,7 +12,7 @@ class StorageService:
             self.config.minio.endpoint,
             access_key=self.config.minio.access_key,
             secret_key=self.config.minio.secret_key,
-            secure=False # Set to True if using HTTPS
+            secure=False
         )
         self.bucket_name = self.config.minio.bucket_name
         self._ensure_bucket_exists()
