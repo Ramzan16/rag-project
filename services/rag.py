@@ -76,6 +76,6 @@ class RagService:
         gen_start_time = time.time()
         answer = chain.invoke({"context": context_docs, "question": query})
         generation_time = time.time() - gen_start_time
-        
+
         logger.info(f"Answer generated in {generation_time:.2f}s")
         return answer

@@ -2,9 +2,7 @@ import argparse
 import logging
 from config.settings import config, provider_type
 from config.logging_utils import setup_logging
-from services import ArxivService
-from services import IngestService
-from services import RagService
+from services import ArxivService, IngestService, RagService, StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +49,9 @@ def main():
     if args.command == "fetch":
         logger.info(f"Fetching {args.max_results} papers for query: '{args.query}'...")
         arxiv_svc = ArxivService(config)
-        results = arxiv_svc.search(args.query)
-        arxiv_svc.download_pdfs(results)
+        storage_svc = StorageService(config)
+        papers = arxiv_svc.run_service(args.query)
+        storage_svc.upload_file(papers)
 
     elif args.command == "ingest":
         logger.info("Starting ingestion pipeline...")
