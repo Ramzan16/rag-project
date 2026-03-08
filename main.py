@@ -51,7 +51,8 @@ def main():
         arxiv_svc = ArxivService(config)
         storage_svc = StorageService(config)
         papers = arxiv_svc.run_service(args.query)
-        storage_svc.upload_file(papers)
+        for paper in papers:
+            storage_svc.upload_file(paper)
 
     elif args.command == "ingest":
         logger.info("Starting ingestion pipeline...")
