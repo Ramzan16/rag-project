@@ -10,8 +10,8 @@ load_dotenv()
 
 # LLM Provider settings
 class provider_type(str, Enum):
-    GEMINI = "gemini"
     OLLAMA = "ollama"
+    GEMINI = "gemini"
 
 class ProviderConfig(BaseModel):
     chat_model: str

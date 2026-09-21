@@ -1,8 +1,8 @@
 import argparse
 import logging
-from config.settings import config, provider_type
-from config.logging_utils import setup_logging
-from services import ArxivService, IngestService, RagService, StorageService
+from src.config.settings import config, provider_type
+from src.config.logging_utils import setup_logging
+from src.services import ArxivService, IngestService, RagService, StorageService, OpenAlexService
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +13,6 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", required=True, help="Sub-command to run")
 
-    # Fetch Research Papers
-    fetch_parser = subparsers.add_parser("fetch", help="Fetch research papers from arXiv")
-    fetch_parser.add_argument("--query", "-q", type=str, required=True, help="Search query for fetching papers")
-    fetch_parser.add_argument("--max-results", "-m", type=int, default=config.arxiv.max_results, help="Maximum number of papers to fetch")
-    fetch_parser.add_argument("--output", "-o", type=str, default=config.file_dir, help="Output file to save fetched papers")
 
     # Ingest Research Papers
     ingest_parser = subparsers.add_parser("ingest", help="Ingest research papers into vector database")
@@ -32,22 +27,10 @@ def main():
     args = parser.parse_args()
     provider = provider_type(args.provider)
 
-    # Map args to config fields for automatic update
-    arg_mapping = {
-        "max_results": (config.arxiv, "max_results"),
-        "output": (config, "file_dir"),
-        "chunk_size": (config.vectordb, "chunk_size"),
-        "chunk_overlap": (config.vectordb, "chunk_overlap"),
-        "batch_size": (config.vectordb, "batch_size"),
-    }
-
-    for arg_key, (obj, attr) in arg_mapping.items():
-        if hasattr(args, arg_key):
-            setattr(obj, attr, getattr(args, arg_key))
-
     # Route to the correct service
     if args.command == "fetch":
-        logger.info(f"Fetching {args.max_results} papers for query: '{args.query}'...")
+        config.arxiv.max_results = args.max_results
+        logger.info(f"Fetching {args.max_results} papers from arXiv for query: '{args.query}'...")
         arxiv_svc = ArxivService(config)
         storage_svc = StorageService(config)
         papers = arxiv_svc.run_service(args.query)
@@ -55,6 +38,9 @@ def main():
             storage_svc.upload_file(paper)
 
     elif args.command == "ingest":
+        config.vectordb.chunk_size = args.chunk_size
+        config.vectordb.chunk_overlap = args.chunk_overlap
+        config.vectordb.batch_size = args.batch_size
         logger.info("Starting ingestion pipeline...")
         ingest_svc = IngestService(config=config, provider=provider)
         ingest_svc.run_pipeline()
